@@ -10,14 +10,25 @@ use yew::{html, Component, Context, Html, NodeRef};
 pub(crate) enum Msg {
     RenderCanvas,
     RandomizeCanvas,
+    TogglePixel,
+}
+
+#[derive(Copy, Clone)]
+pub(crate) struct Pixel {
+    red: u8,
+    green: u8,
+    blue: u8,
+    _boundry_val: u8,
 }
 
 // yew sub-component for an html canvas
 pub(crate) struct Canvas {
     node_ref: NodeRef,
-    image_data: Vec<u8>,
+    image_data: Vec<Pixel>,
     height: u32,
     width: u32,
+    _pixels_placed_count: u64,
+    _boundry_pixels: Vec<Pixel>,
     _refresh_interval: Interval,
 }
 impl Canvas {
@@ -41,8 +52,8 @@ impl Canvas {
         // Convert the RGB buffer to RGBA
         let rgba_data: Vec<u8> = self
             .image_data
-            .chunks(3)
-            .flat_map(|rgb| vec![rgb[0], rgb[1], rgb[2], 255])
+            .iter()
+            .flat_map(|pixel| vec![pixel.red, pixel.red, pixel.red, 255u8])
             .collect();
 
         // convert framebuffer into js-sys ImageData object
@@ -64,15 +75,20 @@ impl Canvas {
         let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
 
         // Create a test pattern RGB image buffer
-        self.image_data = vec![0u8; width * height * 3];
-        for y in 0..height {
-            for x in 0..width {
-                let random_u8: u8 = rng.gen();
-                let offset: usize = (y * width + x) * 3;
-                self.image_data[offset] = random_u8;
-                self.image_data[offset + 1] = random_u8;
-                self.image_data[offset + 2] = random_u8;
-            }
+        self.image_data = vec![
+            Pixel {
+                red: 0u8,
+                green: 0u8,
+                blue: 0u8,
+                _boundry_val: 0u8
+            };
+            width * height
+        ];
+        for pixel in self.image_data.iter_mut() {
+            let random_u8: u8 = rng.gen();
+            pixel.red = random_u8;
+            pixel.green = random_u8;
+            pixel.blue = random_u8;
         }
     }
 }
@@ -86,12 +102,22 @@ impl Component for Canvas {
             let link = ctx.link().clone();
             Interval::new(1000 / 25, move || link.send_message(Msg::RenderCanvas))
         };
-        let blank_image_buffer: Vec<u8> = vec![1u8; 100 * 100 * 3];
+        let blank_image_buffer: Vec<Pixel> = vec![
+            Pixel {
+                red: 255u8,
+                green: 255u8,
+                blue: 255u8,
+                _boundry_val: 0u8
+            };
+            100 * 100
+        ];
         Self {
             node_ref: NodeRef::default(),
             image_data: blank_image_buffer,
             height: 100u32,
             width: 100u32,
+            _pixels_placed_count: 0u64,
+            _boundry_pixels: Vec::new(),
             _refresh_interval: interval,
         }
     }
@@ -105,6 +131,9 @@ impl Component for Canvas {
             Msg::RandomizeCanvas => {
                 self.randomize_canvas();
             }
+            Msg::TogglePixel => {
+                self.randomize_canvas();
+            }
         }
         false
     }
@@ -113,6 +142,8 @@ impl Component for Canvas {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let random_button_callback: yew::Callback<web_sys::MouseEvent> =
             ctx.link().callback(|_| Msg::RandomizeCanvas);
+        let canvas_mouse_callback: yew::Callback<web_sys::MouseEvent> =
+            ctx.link().callback(|_| Msg::TogglePixel);
 
         html! {
             <div>
@@ -122,7 +153,12 @@ impl Component for Canvas {
                     </button>
                 </div>
                 <div class="centered-canvas">
-                    <canvas ref={self.node_ref.clone()} width={self.width.to_string()} height={self.height.to_string()}></canvas>
+                    <canvas
+                        ref={self.node_ref.clone()}
+                        width={self.width.to_string()}
+                        height={self.height.to_string()}
+                        onclick={canvas_mouse_callback}
+                    ></canvas>
                 </div>
             </div>
         }

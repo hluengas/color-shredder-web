@@ -22,7 +22,7 @@ impl Component for App {
     fn view(&self, _ctx: &Context<Self>) -> Html {
         // render HtmlCanvasComponent sub-compononent
         html! {
-            <Canvas/>
+            <Canvas />
         }
     }
 }
