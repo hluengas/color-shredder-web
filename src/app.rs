@@ -1,4 +1,4 @@
-use crate::canvas::HtmlCanvasComponent;
+use crate::canvas::Canvas;
 use yew::{html, Component, Context, Html};
 
 // yew component for root App
@@ -22,7 +22,7 @@ impl Component for App {
     fn view(&self, _ctx: &Context<Self>) -> Html {
         // render HtmlCanvasComponent sub-compononent
         html! {
-            <HtmlCanvasComponent />
+            <Canvas/>
         }
     }
 }
