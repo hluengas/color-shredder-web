@@ -9,8 +9,9 @@ use yew::{html, Component, Context, Html, NodeRef};
 // yew messages
 pub(crate) enum Msg {
     RenderCanvas,
+    ResetCanvas,
     RandomizeCanvas,
-    TogglePixel,
+    TogglePixel(i32, i32),
 }
 
 #[derive(Copy, Clone)]
@@ -91,6 +92,35 @@ impl Canvas {
             pixel.blue = random_u8;
         }
     }
+    fn toggle_pixel(&mut self, x_coord: i32, y_coord: i32) {
+        let x_index: usize = x_coord
+            .try_into()
+            .expect("[Error] got mouse click position outside of canvas");
+        let y_index: usize = y_coord
+            .try_into()
+            .expect("[Error] got mouse click position outside of canvas");
+        self.image_data[get_linear_index(x_index, y_index, self.width as usize)] = Pixel {
+            red: 0u8,
+            green: 0u8,
+            blue: 0u8,
+            _boundry_val: 0u8,
+        }
+    }
+    fn reset_canvas(&mut self) {
+        let width: usize = self.width as usize;
+        let height: usize = self.height as usize;
+
+        // Create a test pattern RGB image buffer
+        self.image_data = vec![
+            Pixel {
+                red: 255u8,
+                green: 255u8,
+                blue: 255u8,
+                _boundry_val: 0u8
+            };
+            width * height
+        ];
+    }
 }
 impl Component for Canvas {
     type Message = Msg;
@@ -125,14 +155,17 @@ impl Component for Canvas {
     // Canvas update logic
     fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
         match msg {
+            Msg::ResetCanvas => {
+                self.reset_canvas();
+            }
             Msg::RenderCanvas => {
                 self.render_canvas();
             }
             Msg::RandomizeCanvas => {
                 self.randomize_canvas();
             }
-            Msg::TogglePixel => {
-                self.randomize_canvas();
+            Msg::TogglePixel(x_coord, y_coord) => {
+                self.toggle_pixel(x_coord, y_coord);
             }
         }
         false
@@ -140,13 +173,22 @@ impl Component for Canvas {
 
     // Canvas view logic
     fn view(&self, ctx: &Context<Self>) -> Html {
+        let reset_button_callback: yew::Callback<web_sys::MouseEvent> =
+            ctx.link().callback(|_| Msg::ResetCanvas);
         let random_button_callback: yew::Callback<web_sys::MouseEvent> =
             ctx.link().callback(|_| Msg::RandomizeCanvas);
         let canvas_mouse_callback: yew::Callback<web_sys::MouseEvent> =
-            ctx.link().callback(|_| Msg::TogglePixel);
+            ctx.link().callback(|_event: web_sys::MouseEvent| {
+                Msg::TogglePixel(_event.offset_x(), _event.offset_y())
+            });
 
         html! {
             <div>
+                <div class="centered-button">
+                    <button onclick={reset_button_callback}>
+                        { "Reset Image" }
+                    </button>
+                </div>
                 <div class="centered-button">
                     <button onclick={random_button_callback}>
                         { "Generate Image" }
@@ -163,4 +205,8 @@ impl Component for Canvas {
             </div>
         }
     }
+}
+
+fn get_linear_index(x: usize, y: usize, width: usize) -> usize {
+    (y * width) + x
 }
