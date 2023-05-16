@@ -13,6 +13,7 @@ use yew::{html, Component, Context, Html, NodeRef};
 pub(crate) enum Msg {
     RenderCanvas,
     ResetCanvas,
+    FitCanvas,
     RandomizeCanvas,
     TogglePixel(i32, i32),
     ZoomIn,
@@ -35,8 +36,8 @@ pub(crate) struct Canvas {
     view_height: u32,
     width: u32,
     view_width: u32,
-    _pixels_placed_count: u64,
-    _boundry_pixels: Vec<Pixel>,
+    pixels_placed_count: u64,
+    boundry_pixels: Vec<Pixel>,
     _refresh_interval: Interval,
 }
 impl Canvas {
@@ -171,6 +172,40 @@ impl Canvas {
             canvas_ref.set_height(self.view_height);
         }
     }
+    fn fit_canvas_to_screen(&mut self) {
+        // get window & screen from web-sys
+        let window = web_sys::window().unwrap();
+        let screen = window.screen().unwrap();
+
+        // get the height & width from the screen
+        let width = screen.avail_width().unwrap() as u32;
+        let height = screen.avail_height().unwrap() as u32;
+
+        // get the canvas ref and alter the canvas's size
+        let Some(canvas_ref) = self.node_ref.cast::<HtmlCanvasElement>() else { return };
+        canvas_ref.set_width(self.width);
+        canvas_ref.set_height(self.height);
+
+        // generate blank image data
+        let blank_image_buffer: Vec<Pixel> = vec![
+            Pixel {
+                red: 255u8,
+                green: 255u8,
+                blue: 255u8,
+                _boundry_val: 0u8
+            };
+            (height * width) as usize
+        ];
+
+        // make all other needed state changes
+        self.image_data = blank_image_buffer;
+        self.height = height;
+        self.view_height = height;
+        self.width = width;
+        self.view_width = width;
+        self.pixels_placed_count = 0u64;
+        self.boundry_pixels = Vec::new();
+    }
 }
 impl Component for Canvas {
     type Message = Msg;
@@ -198,8 +233,8 @@ impl Component for Canvas {
             view_height: 300u32,
             width: 300u32,
             view_width: 600u32,
-            _pixels_placed_count: 0u64,
-            _boundry_pixels: Vec::new(),
+            pixels_placed_count: 0u64,
+            boundry_pixels: Vec::new(),
             _refresh_interval: interval,
         }
     }
@@ -215,6 +250,9 @@ impl Component for Canvas {
             }
             Msg::RandomizeCanvas => {
                 self.randomize_canvas();
+            }
+            Msg::FitCanvas => {
+                self.fit_canvas_to_screen();
             }
             Msg::ZoomIn => {
                 self.zoom_in_canvas();
@@ -233,6 +271,8 @@ impl Component for Canvas {
     fn view(&self, ctx: &Context<Self>) -> Html {
         let reset_button_callback: yew::Callback<web_sys::MouseEvent> =
             ctx.link().callback(|_| Msg::ResetCanvas);
+        let fit_canvas_to_screen: yew::Callback<web_sys::MouseEvent> =
+            ctx.link().callback(|_| Msg::FitCanvas);
         let random_button_callback: yew::Callback<web_sys::MouseEvent> =
             ctx.link().callback(|_| Msg::RandomizeCanvas);
         let zoom_in_button_callback: yew::Callback<web_sys::MouseEvent> =
@@ -257,6 +297,11 @@ impl Component for Canvas {
                     </button>
                 </div>
                 <div class="centered-button">
+                    <button onclick={fit_canvas_to_screen}>
+                        { "Fit to Screen" }
+                    </button>
+                </div>
+                <div class="centered-button">
                     <button onclick={zoom_in_button_callback}>
                         { "Zoom In" }
                     </button>
@@ -270,7 +315,6 @@ impl Component for Canvas {
                         height={self.view_height.to_string()}
                         ref={self.node_ref.clone()}
                         onclick={canvas_mouse_callback}
-
                     ></canvas>
                 </div>
             </div>
