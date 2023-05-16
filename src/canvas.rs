@@ -35,7 +35,6 @@ pub(crate) struct Canvas {
     view_height: u32,
     width: u32,
     view_width: u32,
-    view_scale: f64,
     _pixels_placed_count: u64,
     _boundry_pixels: Vec<Pixel>,
     _refresh_interval: Interval,
@@ -117,8 +116,11 @@ impl Canvas {
         }
     }
     fn toggle_pixel(&mut self, view_x_coord: i32, view_y_coord: i32) {
-        let x_index: usize = (view_x_coord as f64 * (1.0f64 / self.view_scale)).trunc() as usize;
-        let y_index: usize = (view_y_coord as f64 * (1.0f64 / self.view_scale)).trunc() as usize;
+        let view_scale: f64 = (self.view_width / self.width) as f64;
+
+        let x_index: usize = (view_x_coord as f64 * (1.0f64 / view_scale)).trunc() as usize;
+        let y_index: usize = (view_y_coord as f64 * (1.0f64 / view_scale)).trunc() as usize;
+
         let linear_index = get_linear_index(x_index, y_index, self.width as usize);
 
         let inverted_red: u8 = 255u8 - self.image_data[linear_index].red;
@@ -148,9 +150,8 @@ impl Canvas {
         ];
     }
     fn zoom_in_canvas(&mut self) {
-        self.view_scale = self.view_scale * 2.0f64;
-        self.view_width = (self.width as f64 * self.view_scale).round() as u32;
-        self.view_height = (self.height as f64 * self.view_scale).round() as u32;
+        self.view_width = self.view_width * 2u32;
+        self.view_height = self.view_height * 2u32;
 
         // if node_ref can be cast as HtmlCanvasElement then render the canvas
         let Some(canvas_ref) = self.node_ref.cast::<HtmlCanvasElement>() else { return };
@@ -159,15 +160,16 @@ impl Canvas {
         canvas_ref.set_height(self.view_height);
     }
     fn zoom_out_canvas(&mut self) {
-        self.view_scale = self.view_scale / 2.0f64;
-        self.view_width = (self.width as f64 * self.view_scale).round() as u32;
-        self.view_height = (self.height as f64 * self.view_scale).round() as u32;
+        if self.view_width > self.width {
+            self.view_width = self.view_width / 2u32;
+            self.view_height = self.view_height / 2u32;
 
-        // if node_ref can be cast as HtmlCanvasElement then render the canvas
-        let Some(canvas_ref) = self.node_ref.cast::<HtmlCanvasElement>() else { return };
+            // if node_ref can be cast as HtmlCanvasElement then render the canvas
+            let Some(canvas_ref) = self.node_ref.cast::<HtmlCanvasElement>() else { return };
 
-        canvas_ref.set_width(self.view_width);
-        canvas_ref.set_height(self.view_height);
+            canvas_ref.set_width(self.view_width);
+            canvas_ref.set_height(self.view_height);
+        }
     }
 }
 impl Component for Canvas {
@@ -196,7 +198,6 @@ impl Component for Canvas {
             view_height: 300u32,
             width: 300u32,
             view_width: 600u32,
-            view_scale: 2.0f64,
             _pixels_placed_count: 0u64,
             _boundry_pixels: Vec::new(),
             _refresh_interval: interval,
