@@ -1,4 +1,4 @@
-use rand::Rng;
+use rand::random;
 // needed to get the reference to HtmlCanvasElement
 use wasm_bindgen::JsCast;
 
@@ -73,7 +73,7 @@ impl Canvas {
         let rgba_data: Vec<u8> = self
             .image_data
             .iter()
-            .flat_map(|pixel| vec![pixel.red, pixel.red, pixel.red, 255u8])
+            .flat_map(|pixel| vec![pixel.red, pixel.green, pixel.blue, 255u8])
             .collect();
 
         // convert framebuffer into js-sys ImageData object
@@ -100,8 +100,6 @@ impl Canvas {
             .unwrap();
     }
     fn randomize_canvas(&mut self) {
-        let mut rng: rand::rngs::ThreadRng = rand::thread_rng();
-
         // Create a test pattern RGB image buffer
         self.image_data = vec![
             Pixel {
@@ -113,19 +111,24 @@ impl Canvas {
             self.width as usize * self.height as usize
         ];
         for pixel in self.image_data.iter_mut() {
-            let random_u8: u8 = rng.gen();
-            pixel.red = random_u8;
-            pixel.green = random_u8;
-            pixel.blue = random_u8;
+            pixel.red = random::<u8>();
+            pixel.green = random::<u8>();
+            pixel.blue = random::<u8>();
         }
     }
-    fn toggle_pixel(&mut self, x_coord: i32, y_coord: i32) {
-        let x_index: usize = x_coord.try_into().unwrap();
-        let y_index: usize = y_coord.try_into().unwrap();
-        self.image_data[get_linear_index(x_index, y_index, self.width as usize)] = Pixel {
-            red: 0u8,
-            green: 0u8,
-            blue: 0u8,
+    fn toggle_pixel(&mut self, view_x_coord: i32, view_y_coord: i32) {
+        let x_index: usize = (view_x_coord as f64 * (1.0f64 / self.view_scale)).trunc() as usize;
+        let y_index: usize = (view_y_coord as f64 * (1.0f64 / self.view_scale)).trunc() as usize;
+        let linear_index = get_linear_index(x_index, y_index, self.width as usize);
+
+        let inverted_red: u8 = 255u8 - self.image_data[linear_index].red;
+        let inverted_green: u8 = 255u8 - self.image_data[linear_index].green;
+        let inverted_blue: u8 = 255u8 - self.image_data[linear_index].blue;
+
+        self.image_data[linear_index] = Pixel {
+            red: inverted_red,
+            green: inverted_green,
+            blue: inverted_blue,
             _boundry_val: 0u8,
         }
     }
@@ -190,10 +193,10 @@ impl Component for Canvas {
             node_ref: NodeRef::default(),
             image_data: blank_image_buffer,
             height: 150u32,
-            view_height: 150u32,
+            view_height: 300u32,
             width: 300u32,
-            view_width: 300u32,
-            view_scale: 1.0f64,
+            view_width: 600u32,
+            view_scale: 2.0f64,
             _pixels_placed_count: 0u64,
             _boundry_pixels: Vec::new(),
             _refresh_interval: interval,
