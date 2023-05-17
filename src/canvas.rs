@@ -142,9 +142,9 @@ impl Canvas {
         // Create a test pattern RGB image buffer
         self.image_data = vec![
             Pixel {
-                red: 255u8,
-                green: 255u8,
-                blue: 255u8,
+                red: 0u8,
+                green: 0u8,
+                blue: 0u8,
                 _boundry_val: 0u8
             };
             width * height
@@ -175,34 +175,40 @@ impl Canvas {
     fn fit_canvas_to_screen(&mut self) {
         // get window & screen from web-sys
         let window = web_sys::window().unwrap();
-        let screen = window.screen().unwrap();
+
+        let width_margin = 32u32;
+        let height_margin = 128u32;
 
         // get the height & width from the screen
-        let width = screen.avail_width().unwrap() as u32;
-        let height = screen.avail_height().unwrap() as u32;
-
-        // get the canvas ref and alter the canvas's size
-        let Some(canvas_ref) = self.node_ref.cast::<HtmlCanvasElement>() else { return };
-        canvas_ref.set_width(self.width);
-        canvas_ref.set_height(self.height);
+        let canvas_width =
+            (window.inner_width().unwrap().as_f64().unwrap() as u32 - width_margin) / 4u32;
+        let canvas_height =
+            (window.inner_height().unwrap().as_f64().unwrap() as u32 - height_margin) / 4u32;
+        let canvas_view_width = canvas_width * 4u32;
+        let canvas_view_height = canvas_height * 4u32;
 
         // generate blank image data
         let blank_image_buffer: Vec<Pixel> = vec![
             Pixel {
-                red: 255u8,
-                green: 255u8,
-                blue: 255u8,
+                red: 0u8,
+                green: 0u8,
+                blue: 0u8,
                 _boundry_val: 0u8
             };
-            (height * width) as usize
+            (canvas_height * canvas_width) as usize
         ];
+
+        // get the canvas ref and alter the canvas's size
+        let Some(canvas_ref) = self.node_ref.cast::<HtmlCanvasElement>() else { return };
+        canvas_ref.set_width(canvas_view_width);
+        canvas_ref.set_height(canvas_view_height);
 
         // make all other needed state changes
         self.image_data = blank_image_buffer;
-        self.height = height;
-        self.view_height = height;
-        self.width = width;
-        self.view_width = width;
+        self.height = canvas_height;
+        self.view_height = canvas_view_height;
+        self.width = canvas_width;
+        self.view_width = canvas_view_width;
         self.pixels_placed_count = 0u64;
         self.boundry_pixels = Vec::new();
     }
@@ -217,22 +223,38 @@ impl Component for Canvas {
             let link = ctx.link().clone();
             Interval::new(1000 / 25, move || link.send_message(Msg::RenderCanvas))
         };
+        // get window & screen from web-sys
+        let window = web_sys::window().unwrap();
+        let width_margin = 32u32;
+        let height_margin = 128u32;
+
+        // get the height & width from the screen
+        let canvas_width =
+            (window.inner_width().unwrap().as_f64().unwrap() as u32 - width_margin) / 4u32;
+        let canvas_height =
+            (window.inner_height().unwrap().as_f64().unwrap() as u32 - height_margin) / 4u32;
+        let canvas_view_width = canvas_width * 4u32;
+        let canvas_view_height = canvas_height * 4u32;
+
+        // generate blank image data
         let blank_image_buffer: Vec<Pixel> = vec![
             Pixel {
-                red: 255u8,
-                green: 255u8,
-                blue: 255u8,
+                red: 0u8,
+                green: 0u8,
+                blue: 0u8,
                 _boundry_val: 0u8
             };
-            150 * 300
+            (canvas_height * canvas_width) as usize
         ];
+
+        // make all other needed state changes
         Self {
             node_ref: NodeRef::default(),
             image_data: blank_image_buffer,
-            height: 150u32,
-            view_height: 300u32,
-            width: 300u32,
-            view_width: 600u32,
+            height: canvas_height,
+            view_height: canvas_view_height,
+            width: canvas_width,
+            view_width: canvas_view_width,
             pixels_placed_count: 0u64,
             boundry_pixels: Vec::new(),
             _refresh_interval: interval,
