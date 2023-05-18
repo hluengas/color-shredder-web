@@ -8,6 +8,8 @@ use web_sys::{
     OffscreenCanvasRenderingContext2d,
 };
 use yew::{html, Component, Context, Html, NodeRef};
+use yew_bootstrap::component::Button;
+use yew_bootstrap::util::{include_cdn, include_cdn_js, Color};
 
 // yew messages
 pub(crate) enum Msg {
@@ -177,7 +179,7 @@ impl Canvas {
         let window = web_sys::window().unwrap();
 
         let width_margin = 32u32;
-        let height_margin = 128u32;
+        let height_margin = 256u32;
 
         // get the height & width from the screen
         let canvas_width =
@@ -226,7 +228,7 @@ impl Component for Canvas {
         // get window & screen from web-sys
         let window = web_sys::window().unwrap();
         let width_margin = 32u32;
-        let height_margin = 128u32;
+        let height_margin = 256u32;
 
         // get the height & width from the screen
         let canvas_width =
@@ -302,35 +304,23 @@ impl Component for Canvas {
         let zoom_out_button_callback: yew::Callback<web_sys::MouseEvent> =
             ctx.link().callback(|_| Msg::ZoomOut);
         let canvas_mouse_callback: yew::Callback<web_sys::MouseEvent> =
-            ctx.link().callback(|_event: web_sys::MouseEvent| {
-                Msg::TogglePixel(_event.offset_x(), _event.offset_y())
+            ctx.link().callback(|event: web_sys::MouseEvent| {
+                Msg::TogglePixel(event.offset_x(), event.offset_y())
             });
 
         html! {
-            <div>
+            <div class="dark_container">
+                {include_cdn()}
                 <div class="centered-button">
-                    <button onclick={reset_button_callback}>
-                        { "Reset Image" }
-                    </button>
+                    <Button onclick={reset_button_callback} style={Color::Dark} text={"Reset Image"} />
+                    <Button onclick={random_button_callback} style={Color::Dark} text={"Generate Image"} />
+                    <Button onclick={fit_canvas_to_screen} style={Color::Dark} text={"Fit to Screen"} />
                 </div>
                 <div class="centered-button">
-                    <button onclick={random_button_callback}>
-                        { "Generate Image" }
-                    </button>
+                    <Button onclick={zoom_in_button_callback} style={Color::Dark} text={"Zoom In"} />
+                    <Button onclick={zoom_out_button_callback} style={Color::Dark} text={"Zoom Out"} />
                 </div>
-                <div class="centered-button">
-                    <button onclick={fit_canvas_to_screen}>
-                        { "Fit to Screen" }
-                    </button>
-                </div>
-                <div class="centered-button">
-                    <button onclick={zoom_in_button_callback}>
-                        { "Zoom In" }
-                    </button>
-                    <button onclick={zoom_out_button_callback}>
-                        { "Zoom Out" }
-                    </button>
-                </div>
+                <h />
                 <div class="centered-canvas">
                     <canvas
                         width={self.view_width.to_string()}
@@ -339,6 +329,7 @@ impl Component for Canvas {
                         onclick={canvas_mouse_callback}
                     ></canvas>
                 </div>
+                {include_cdn_js()}
             </div>
         }
     }

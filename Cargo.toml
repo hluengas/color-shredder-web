@@ -6,7 +6,8 @@ license = "MIT"
 
 [dependencies]
 yew = { version = "0.20", features = ["csr"] }
-web-sys = { version = "0.3", features = ["OffscreenCanvas", "OffscreenCanvasRenderingContext2d", "CanvasRenderingContext2d", "HtmlCanvasElement", "ImageData", "Window"]}
+yew-bootstrap = { version = "0.5" }
+web-sys = { version = "0.3", features = ["HtmlTextAreaElement", "HtmlSelectElement", "OffscreenCanvas", "OffscreenCanvasRenderingContext2d", "CanvasRenderingContext2d", "HtmlCanvasElement", "ImageData", "Window"]}
 js-sys = { version = "0.3"}
 wasm-bindgen = { version = "0.2"}
 wasm-bindgen-futures = { version = "0.4"}
