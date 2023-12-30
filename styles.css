@@ -5,18 +5,25 @@ body {
 
 canvas {
     image-rendering: pixelated;
+    margin-top: 1em;
 }
 
-.centered-canvas {
+.centered-div {
     display: flex;
     justify-content: center;
     align-items: center;
 }
 
 .centered-button {
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    margin-top: 1em;
+    margin-bottom: 0em;
+    margin-left: 1em;
+    margin-right: 1em;
+    font-size: 1.5em !important;
+}
+
+.text-input {
+    font-size: 1.5em !important;
 }
 
 .dark_container {

@@ -120,22 +120,18 @@ fn initialize_canvas() -> Painting {
     // CUSTOMIZED:
     for location in config["canvas"]["starting_locations"] {
         let _x = &location["x"]
-        .as_str()
-        .expect("[ERROR] failed to parse config value as string")
-        .parse::<u32>()
-        .expect("[ERROR] failed to convert config str to int");
-        
+            .as_str()
+            .expect("[ERROR] failed to parse config value as string")
+            .parse::<u32>()
+            .expect("[ERROR] failed to convert config str to int");
+
         let _y = &location["y"]
-        .as_str()
-        .expect("[ERROR] failed to parse config value as string")
-        .parse::<u32>()
-        .expect("[ERROR] failed to convert config str to int");
+            .as_str()
+            .expect("[ERROR] failed to parse config value as string")
+            .parse::<u32>()
+            .expect("[ERROR] failed to convert config str to int");
 
-
-        starting_points.push(Coordinate {
-            x: _x,
-            y: _y,
-        });
+        starting_points.push(Coordinate { x: _x, y: _y });
     }
 
     // hold all info required for painting

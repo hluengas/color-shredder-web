@@ -20,6 +20,9 @@ pub(crate) enum Msg {
     TogglePixel(i32, i32),
     ZoomIn,
     ZoomOut,
+    WidthInput(String),
+    HeightInput(String),
+    SetSize,
 }
 
 #[derive(Copy, Clone)]
@@ -38,8 +41,11 @@ pub(crate) struct Canvas {
     view_height: u32,
     width: u32,
     view_width: u32,
+    zoom_scale: u32,
     pixels_placed_count: u64,
     boundry_pixels: Vec<Pixel>,
+    width_input: String,
+    height_input: String,
     _refresh_interval: Interval,
 }
 impl Canvas {
@@ -124,7 +130,7 @@ impl Canvas {
         let x_index: usize = (view_x_coord as f64 * (1.0f64 / view_scale)).trunc() as usize;
         let y_index: usize = (view_y_coord as f64 * (1.0f64 / view_scale)).trunc() as usize;
 
-        let linear_index = get_linear_index(x_index, y_index, self.width as usize);
+        let linear_index: usize = get_linear_index(x_index, y_index, self.width as usize);
 
         let inverted_red: u8 = 255u8 - self.image_data[linear_index].red;
         let inverted_green: u8 = 255u8 - self.image_data[linear_index].green;
@@ -155,6 +161,7 @@ impl Canvas {
     fn zoom_in_canvas(&mut self) {
         self.view_width = self.view_width * 2u32;
         self.view_height = self.view_height * 2u32;
+        self.zoom_scale = self.zoom_scale * 2u32;
 
         // if node_ref can be cast as HtmlCanvasElement then render the canvas
         let Some(canvas_ref) = self.node_ref.cast::<HtmlCanvasElement>() else { return };
@@ -166,6 +173,7 @@ impl Canvas {
         if self.view_width > self.width {
             self.view_width = self.view_width / 2u32;
             self.view_height = self.view_height / 2u32;
+            self.zoom_scale = self.zoom_scale / 2u32;
 
             // if node_ref can be cast as HtmlCanvasElement then render the canvas
             let Some(canvas_ref) = self.node_ref.cast::<HtmlCanvasElement>() else { return };
@@ -176,29 +184,35 @@ impl Canvas {
     }
     fn fit_canvas_to_screen(&mut self) {
         // get window & screen from web-sys
-        let window = web_sys::window().unwrap();
+        let window: web_sys::Window = web_sys::window().unwrap();
 
-        let width_margin = 32u32;
-        let height_margin = 256u32;
+        let window_width: u32 = window.inner_width().unwrap().as_f64().unwrap().trunc() as u32;
+        let window_height: u32 = window.inner_height().unwrap().as_f64().unwrap().trunc() as u32;
+
+        let canvas_width_margin: u32 = window_width / 4u32;
+        let canvas_height_margin: u32 = window_height / 4u32;
 
         // get the height & width from the screen
-        let canvas_width =
-            (window.inner_width().unwrap().as_f64().unwrap() as u32 - width_margin) / 4u32;
-        let canvas_height =
-            (window.inner_height().unwrap().as_f64().unwrap() as u32 - height_margin) / 4u32;
-        let canvas_view_width = canvas_width * 4u32;
-        let canvas_view_height = canvas_height * 4u32;
+        let canvas_width: u32 = (window_width - canvas_width_margin) / self.zoom_scale;
+        let canvas_height: u32 = (window_height - canvas_height_margin) / self.zoom_scale;
+        let canvas_view_width: u32 = canvas_width * self.zoom_scale;
+        let canvas_view_height: u32 = canvas_height * self.zoom_scale;
 
         // generate blank image data
-        let blank_image_buffer: Vec<Pixel> = vec![
+        let mut random_image_data: Vec<Pixel> = vec![
             Pixel {
                 red: 0u8,
                 green: 0u8,
                 blue: 0u8,
                 _boundry_val: 0u8
             };
-            (canvas_height * canvas_width) as usize
+            self.width as usize * self.height as usize
         ];
+        for pixel in random_image_data.iter_mut() {
+            pixel.red = random::<u8>();
+            pixel.green = random::<u8>();
+            pixel.blue = random::<u8>();
+        }
 
         // get the canvas ref and alter the canvas's size
         let Some(canvas_ref) = self.node_ref.cast::<HtmlCanvasElement>() else { return };
@@ -206,13 +220,63 @@ impl Canvas {
         canvas_ref.set_height(canvas_view_height);
 
         // make all other needed state changes
-        self.image_data = blank_image_buffer;
+        self.image_data = random_image_data;
         self.height = canvas_height;
         self.view_height = canvas_view_height;
         self.width = canvas_width;
         self.view_width = canvas_view_width;
         self.pixels_placed_count = 0u64;
         self.boundry_pixels = Vec::new();
+    }
+    fn set_canvas_size(&mut self) {
+        // get window & screen from web-sys
+
+        let input_width: Result<u32, std::num::ParseIntError> = self.width_input.parse::<u32>();
+        let input_height: Result<u32, std::num::ParseIntError> = self.height_input.parse::<u32>();
+
+        if input_width.is_ok() && input_height.is_ok() {
+            // get the height & width from the screen
+            let canvas_width: u32 = input_width.unwrap().clone() / self.zoom_scale;
+            let canvas_height: u32 = input_height.unwrap().clone() / self.zoom_scale;
+            let canvas_view_width: u32 = canvas_width * self.zoom_scale;
+            let canvas_view_height: u32 = canvas_height * self.zoom_scale;
+
+            // generate blank image data
+            let mut random_image_data: Vec<Pixel> = vec![
+                Pixel {
+                    red: 0u8,
+                    green: 0u8,
+                    blue: 0u8,
+                    _boundry_val: 0u8
+                };
+                self.width as usize * self.height as usize
+            ];
+            for pixel in random_image_data.iter_mut() {
+                pixel.red = random::<u8>();
+                pixel.green = random::<u8>();
+                pixel.blue = random::<u8>();
+            }
+
+            // get the canvas ref and alter the canvas's size
+            let Some(canvas_ref) = self.node_ref.cast::<HtmlCanvasElement>() else { return };
+            canvas_ref.set_width(canvas_view_width);
+            canvas_ref.set_height(canvas_view_height);
+
+            // make all other needed state changes
+            self.image_data = random_image_data;
+            self.height = canvas_height;
+            self.view_height = canvas_view_height;
+            self.width = canvas_width;
+            self.view_width = canvas_view_width;
+            self.pixels_placed_count = 0u64;
+            self.boundry_pixels = Vec::new();
+        }
+    }
+    fn width_input(&mut self, input: String) {
+        self.width_input = input;
+    }
+    fn height_input(&mut self, input: String) {
+        self.height_input = input;
     }
 }
 impl Component for Canvas {
@@ -222,21 +286,24 @@ impl Component for Canvas {
     // Canvas init
     fn create(ctx: &Context<Self>) -> Self {
         let interval: Interval = {
-            let link = ctx.link().clone();
+            let link: html::Scope<Canvas> = ctx.link().clone();
             Interval::new(1000 / 25, move || link.send_message(Msg::RenderCanvas))
         };
         // get window & screen from web-sys
-        let window = web_sys::window().unwrap();
-        let width_margin = 32u32;
-        let height_margin = 256u32;
+        let window: web_sys::Window = web_sys::window().unwrap();
+
+        let window_width: u32 = window.inner_width().unwrap().as_f64().unwrap().trunc() as u32;
+        let window_height: u32 = window.inner_height().unwrap().as_f64().unwrap().trunc() as u32;
+
+        let canvas_width_margin: u32 = window_width / 4u32;
+        let canvas_height_margin: u32 = window_height / 4u32;
 
         // get the height & width from the screen
-        let canvas_width =
-            (window.inner_width().unwrap().as_f64().unwrap() as u32 - width_margin) / 4u32;
-        let canvas_height =
-            (window.inner_height().unwrap().as_f64().unwrap() as u32 - height_margin) / 4u32;
-        let canvas_view_width = canvas_width * 4u32;
-        let canvas_view_height = canvas_height * 4u32;
+        let default_scale: u32 = 8u32;
+        let canvas_width: u32 = (window_width - canvas_width_margin) / default_scale;
+        let canvas_height: u32 = (window_height - canvas_height_margin) / default_scale;
+        let canvas_view_width: u32 = canvas_width * default_scale;
+        let canvas_view_height: u32 = canvas_height * default_scale;
 
         // generate blank image data
         let blank_image_buffer: Vec<Pixel> = vec![
@@ -257,8 +324,11 @@ impl Component for Canvas {
             view_height: canvas_view_height,
             width: canvas_width,
             view_width: canvas_view_width,
+            zoom_scale: default_scale,
             pixels_placed_count: 0u64,
             boundry_pixels: Vec::new(),
+            width_input: String::default(),
+            height_input: String::default(),
             _refresh_interval: interval,
         }
     }
@@ -287,6 +357,15 @@ impl Component for Canvas {
             Msg::TogglePixel(x_coord, y_coord) => {
                 self.toggle_pixel(x_coord, y_coord);
             }
+            Msg::SetSize => {
+                self.set_canvas_size();
+            }
+            Msg::WidthInput(width) => {
+                self.width_input(width);
+            }
+            Msg::HeightInput(height) => {
+                self.height_input(height);
+            }
         }
         false
     }
@@ -303,6 +382,14 @@ impl Component for Canvas {
             ctx.link().callback(|_| Msg::ZoomIn);
         let zoom_out_button_callback: yew::Callback<web_sys::MouseEvent> =
             ctx.link().callback(|_| Msg::ZoomOut);
+        let set_canvas_size_callback: yew::Callback<web_sys::MouseEvent> =
+            ctx.link().callback(|_| Msg::SetSize);
+        let width_input_callback: yew::Callback<web_sys::InputEvent> = ctx
+            .link()
+            .callback(|event: web_sys::InputEvent| Msg::WidthInput(event.data().unwrap()));
+        let height_input_callback: yew::Callback<web_sys::InputEvent> = ctx
+            .link()
+            .callback(|event: web_sys::InputEvent| Msg::HeightInput(event.data().unwrap()));
         let canvas_mouse_callback: yew::Callback<web_sys::MouseEvent> =
             ctx.link().callback(|event: web_sys::MouseEvent| {
                 Msg::TogglePixel(event.offset_x(), event.offset_y())
@@ -311,17 +398,21 @@ impl Component for Canvas {
         html! {
             <div class="dark_container">
                 {include_cdn()}
-                <div class="centered-button">
-                    <Button onclick={reset_button_callback} style={Color::Dark} text={"Reset Image"} />
-                    <Button onclick={random_button_callback} style={Color::Dark} text={"Generate Image"} />
-                    <Button onclick={fit_canvas_to_screen} style={Color::Dark} text={"Fit to Screen"} />
+                <div class="centered-div">
+                    <Button onclick={reset_button_callback} style={Color::Dark} class="centered-button" text={"Reset Image"} />
+                    <Button onclick={random_button_callback} style={Color::Dark} class="centered-button" text={"Generate Image"} />
+                    <Button onclick={fit_canvas_to_screen} style={Color::Dark} class="centered-button" text={"Fit to Screen"} />
                 </div>
-                <div class="centered-button">
-                    <Button onclick={zoom_in_button_callback} style={Color::Dark} text={"Zoom In"} />
-                    <Button onclick={zoom_out_button_callback} style={Color::Dark} text={"Zoom Out"} />
+                <div class="centered-div">
+                    <Button onclick={zoom_in_button_callback} style={Color::Dark} class="centered-button" text={"Zoom In"} />
+                    <Button onclick={zoom_out_button_callback} style={Color::Dark} class="centered-button" text={"Zoom Out"} />
                 </div>
-                <h />
-                <div class="centered-canvas">
+                <div class="centered-div">
+                    <input type="text" class="text-input" value="Width Input" oninput={width_input_callback} />
+                    <input type="text" class="text-input" value="Height Input" oninput={height_input_callback} />
+                    <Button onclick={set_canvas_size_callback} style={Color::Dark} class="centered-button" text={"Set Dimensions"} />
+                </div>
+                <div class="centered-div">
                     <canvas
                         width={self.view_width.to_string()}
                         height={self.view_height.to_string()}
